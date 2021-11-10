@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+
+CONT_CAFILE=/ssl/cert.pem
+CONT_CAPATH=/ssl/certs
+
+default_cert_dir() {
+  openssl version -d | sed -e "s/^OPENSSLDIR: \"//" -e "s/\"$//"
+}
+
+ca_file() {
+  if [ -z "$SSL_CERT_FILE" ]; then
+    echo $(default_cert_dir)/cert.pem
+  else
+    echo $SSL_CERT_FILE
+  fi
+}
+
+ca_path() {
+  if [ -z "$SSL_CERT_DIR" ]; then
+    echo $(default_cert_dir)/certs
+  else
+    echo $SSL_CERT_DIR
+  fi
+}
+
+# Can't just mount CAPATH, because typically many certificates are symbolic
+# links and symlinks don't work through bindmounts.
+# Instead we iterate the directory and build a list of mount flags to mount each 
+# file individually - bind mount resolves symlinks before mount.
+cert_mount_flags() {
+  ls $(ca_path) | sed "s|.*|-v $(ca_path)/&:$CONT_CAPATH/&|"
+}
+
+env_flags() {
+  echo "-e SSL_CERT_FILE=$CONT_CAFILE -e SSL_CERT_DIR=$CONT_CAPATH"
+}
+
+mount_flags() {
+  echo "-v $(ca_file):$CONT_CAFILE $(cert_mount_flags)"
+}
+
+docker() {
+  $(which -a docker | grep -v $(realpath $0) | head -n 1) $@
+}
+
+case $1 in
+  run)
+    shift
+    docker run \
+      $(mount_flags) \
+      $(env_flags) \
+        $@
+    ;;
+  *)
+    docker $@
+    ;;
+esac
