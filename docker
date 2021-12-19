@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 
+CONT_CAFILE=/ssl/cert.pem
+CONT_CAPATH=/ssl/certs
+
 env_flags() {
   echo "-e SSL_CERT_FILE=$CONT_CAFILE -e SSL_CERT_DIR=$CONT_CAPATH"
 }
 
 mount_flags() {
-  CONT_CAFILE=/ssl/cert.pem
-  CONT_CAPATH=/ssl/certs
-
   DEFAULT_CERT_DIR=$(openssl version -d | sed -e "s/^OPENSSLDIR: \"//" -e "s/\"$//")
 
   CAFILE=${SSL_CERT_FILE:-$DEFAULT_CERT_DIR/cert.pem}
